@@ -19,6 +19,8 @@ THE SOFTWARE.
 
 */
 
+$tate = {};
+
 $tate.Machine = function(var pStates){
 	states = pStates;
 }
@@ -115,7 +117,7 @@ $tate.TState.prototype = Object.create($tate.State.prototype, {
 /* This is just a repository of functions that get called on 'cleanup' */
 $tate.Sweeper = {
 	eventList: [], //list of funcs to call on end state
-	Register: function(var key, var pToReg) {
+	Register: function(var pToReg) {
 		var eventList = this.eventList;
 		if (typof eventList == "undefined" || eventList == null) {
 			eventList = [];
@@ -123,11 +125,21 @@ $tate.Sweeper = {
 		//if it's an object that's passed in, just wrap it in a function that calls that objects 'cleanup'
 		var func = typeof pToReg == "function"? func : this.GenFunc_Cleanup(pToReg);
 		eventList.push(func);
+		return func;
+	},
+	Unregister: function(var pToUnReg) {
+		for(key in this.eventList) {
+			if(this.eventList[key] == pToUnReg) {
+				this.evenList[key] = null; //Not removing from array as this would make cleanup a pain
+			}
+		}
 	},
 	Cleanup: function(pUserData) {
 		for (key in this.eventList) {
 			var pFunc = this.eventList[key];
-			pFunc(pUserData);
+			if(pFunc != null) {
+				pFunc(pUserData);
+			}
 		}
 		this.eventList = [];
 	},
@@ -137,10 +149,16 @@ $tate.Sweeper = {
 }
 
 $tate.UiObject = function(var pSweeper) {
-	pSweeper.Register(pSweeper.GenFunc_Cleanup(this));
+	var coatCheckTag = pSweeper.Register(pSweeper.GenFunc_Cleanup(this));
+	this.sweeper = pSweeper;
 }
 
 $tate.UiObject.prototype = {
-	
-
+	coatCheckTag: null,
+	Cleanup: function() {
+		if(this.coatCheckTag) {
+			this.Sweeper.Unregister(this.coatCheckTag);
+			this.coatCheckTag = null;
+		}
+	}
 }
